@@ -1,5 +1,3 @@
-use std::borrow::Borrow;
-
 use actix_web::client::{Client, Connector};
 use actix_web::error::Error;
 use actix_web::http::StatusCode;
@@ -8,6 +6,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::errors::RestError;
+
+const RESPONSE_BODY_LENGTH_LIMIT: usize = 1_000_000;
 
 pub struct PokemonApiRepository {
     client: Client
@@ -40,24 +40,16 @@ impl PokemonApiRepository {
     async fn get_species_url(&self, name: &str) -> Result<Option<String>, Error> {
         let url = format!("https://pokeapi.co/api/v2/pokemon/{}", name);
 
-        let mut response = self.client.get(url)
-            .send()
-            .await
-            .map_err(Error::from)?;
-
-        if let StatusCode::NOT_FOUND = response.status() {
-            return Ok(None);
-        }
-
-        let body = response.body().await?;
-
-        let json = serde_json::from_slice::<Value>(&body)
-            .map_err(|e| Error::from(e))?;
-
-        Ok(PokemonApiRepository::extract_species(&json))
+        self.get_json(&url, PokemonApiRepository::extract_species).await
     }
 
     async fn get_species_en_flavor_text(&self, url: &str) -> Result<Option<String>, Error> {
+        self.get_json(url, PokemonApiRepository::extract_first_en_flavor_text).await
+    }
+
+    async fn get_json<F, Res>(&self, url: &str, extractor: F) -> Result<Option<Res>, Error>
+        where F: Fn(&Value) -> Option<Res>
+    {
         let mut response = self.client.get(url)
             .send()
             .await
@@ -67,12 +59,12 @@ impl PokemonApiRepository {
             return Ok(None);
         }
 
-        let body = response.body().await?;
+        let body = response.body().limit(RESPONSE_BODY_LENGTH_LIMIT).await?;
 
         let json = serde_json::from_slice::<Value>(&body)
             .map_err(|e| Error::from(e))?;
 
-        Ok(PokemonApiRepository::extract_first_en_flavor_text(&json))
+        Ok(extractor(&json))
     }
 
     fn extract_species(root: &Value) -> Option<String> {
@@ -102,14 +94,22 @@ struct PokemonLanguage {
 
 #[cfg(test)]
 mod tests {
-    use actix_web::test;
-
     use super::*;
 
     #[actix_rt::test]
     async fn test_get_description_with_existing_pokemon_should_return_some_string() {
         let repo = PokemonApiRepository::default();
         let result = repo.get_description("charizard").await.unwrap();
+
+        let description = result.unwrap();
+
+        assert!(!description.is_empty())
+    }
+
+    #[actix_rt::test]
+    async fn test_get_description_with_existing_pokemon_large_payload_should_return_some_string() {
+        let repo = PokemonApiRepository::default();
+        let result = repo.get_description("mew").await.unwrap();
 
         let description = result.unwrap();
 

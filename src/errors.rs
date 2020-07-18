@@ -1,10 +1,7 @@
-use std::error::Error;
-
-use actix_web::{error, http::header, http::StatusCode, HttpResponse};
+use actix_web::{error, http::StatusCode, HttpResponse};
 use serde::{Deserialize, Serialize};
 use serde::export::fmt;
 use serde::export::Formatter;
-use serde_json::to_string;
 
 #[derive(Debug)]
 pub enum RestError {

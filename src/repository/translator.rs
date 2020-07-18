@@ -1,12 +1,10 @@
 use std::collections::HashMap;
 
 use actix_web::client::{Client, Connector, SendRequestError};
-use actix_web::Error;
 use openssl::ssl::{SslConnector, SslMethod};
 use serde_json::Value;
 
 use crate::errors::RestError;
-use crate::errors::RestError::UpstreamError;
 
 pub struct TranslatorApiRepository {
     client: Client
