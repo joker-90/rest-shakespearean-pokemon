@@ -7,7 +7,6 @@ use serde_json::Value;
 
 use crate::errors::RestError;
 use crate::errors::RestError::UpstreamError;
-use crate::repository::call_and_get_json;
 
 pub struct TranslatorApiRepository {
     client: Client
