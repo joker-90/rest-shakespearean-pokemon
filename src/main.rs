@@ -17,7 +17,7 @@ async fn main() -> std::io::Result<()> {
             .data(Repositories::default())
             .route("/pokemon/{pokemon_name}", web::get().to(get_pokemon))
     })
-        .bind("127.0.0.1:8080")?
+        .bind("0.0.0.0:8080")?
         .run()
         .await
 }
